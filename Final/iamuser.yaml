@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: roles and policies
+
+Parameters:
+  MyPass:
+    Type: String
+Resources:
+  MyIAMUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Join ["-", [ !Ref "AWS::Region", "User1" ]]
+      LoginProfile:
+        Password: !Ref MyPass
+      Groups:
+        - !Sub '${MyIAMGroup}'
+    DependsOn: MyIAMGroup
+  MyIAMGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      GroupName: !Join ["-", [ !Ref "AWS::Region", "testGroup" ]]
+      Policies:
+        - PolicyName: AdministratorAccess
+          PolicyDocument:
+             Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:Get*
+                  Resource: "*"
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - s3:Get*
+              Resource: '*'
+  SecurityGroupECS:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 22
+          ToPort: 22
+        
+        - IpProtocol: tcp
+          CidrIp: 127.0.0.1/32
+          FromPort: 6001
+          ToPort: 6001
+          
+        - IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 6001
+          ToPort: 6001
+
+  taskdefinition:
+    Type: 'AWS::ECS::TaskDefinition'
+    Properties:
+      RequiresCompatibilities:
+        - EC2
+      ContainerDefinitions:
+        - Name: gateway_container
+          MountPoints: []
+          Image: 647246906413.dkr.ecr.us-east-2.amazonaws.com/validator_gateway:70
+          Cpu: 256
+          EntryPoint: []
+          Memory: 512
+          PortMappings:
+            - ContainerPort: 6001
+              HostPort: 0
+          Essential: true
+          Command:
+            - '--beacon_url=3.238.111.188'
+            - '--connect-launchnodes=false'
+          
+      Volumes: []
+  
+  ECSService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: hello-world-cluster
+      DesiredCount: 1
+      TaskDefinition: {"Ref":taskdefinition}
+      ServiceName: validator-gateway-service
+      LaunchType: EC2
+      

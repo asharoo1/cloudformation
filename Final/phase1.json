@@ -1,0 +1,567 @@
+{
+
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "Amazon ECS Phase 1 Template",
+
+    "Parameters": {
+
+        "IAMUserPassword": {
+            "NoEcho" : "true",
+            "Type": "String"
+        },
+
+        "IAMUsername": {
+
+            "Type": "String",
+            "Default": "Administrator"
+            
+
+        },
+
+        "ServiceName": {
+            "Type": "String",
+            "Default": "Validator-Service"
+            
+        },
+        
+        "IAMRoleName": {
+
+            "Type": "String",
+            "Default": "ValidatorRole"
+
+        },
+
+        "IAMGroupname": {
+
+            "Type": "String",
+            "Default": "Administrators"
+
+        },
+        
+        
+
+        "SubnetId": {
+            "Type": "List<AWS::EC2::Subnet::Id>",
+            "Description": "Select at least two subnets in your selected VPC."
+        },
+        
+        "VpcId": {
+              "Type": "AWS::EC2::VPC::Id",
+              "Description": "Select a VPC that allows instances access to the Internet."
+        },
+
+        "ClusterName": {
+
+            "Description": "Name of your Amazon ECS Cluster",
+
+            "Type": "String",
+
+            "ConstraintDescription": "must be a valid Amazon ECS Cluster.",
+
+            "Default": "Validator-Cluster"
+
+        },
+
+        "KeyName": {
+
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+
+            "Type": "AWS::EC2::KeyPair::KeyName",
+
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+
+        },
+
+        "InstanceType": {
+
+            "Description": "Container Instance type",
+
+            "Type": "String",
+
+            "Default": "t2.micro",
+
+            "AllowedValues": [
+
+                "t2.micro",
+
+                "t2.small",
+
+                "t2.medium",
+
+                "m3.medium",
+
+                "m3.large",
+
+                "m3.xlarge",
+
+                "m3.2xlarge",
+
+                "c3.large",
+
+                "c3.xlarge",
+
+                "c3.2xlarge",
+
+                "c3.4xlarge",
+
+                "c3.8xlarge",
+
+                "r3.large",
+
+                "r3.xlarge",
+
+                "r3.2xlarge",
+
+                "r3.4xlarge",
+
+                "r3.8xlarge",
+
+                "i2.xlarge",
+
+                "i2.2xlarge",
+
+                "i2.4xlarge",
+
+                "i2.8xlarge",
+
+                "hi1.4xlarge",
+
+                "hs1.8xlarge",
+
+                "cr1.8xlarge",
+
+                "cc2.8xlarge"
+
+            ],
+
+            "ConstraintDescription": "must be a valid EC2 instance type."
+
+        }
+
+    },
+
+    "Mappings":{
+        "AWSRegionToAMI":{
+          "us-east-1": {
+                  "AMIID": "ami-09bee01cc997a78a6"
+              },
+              "us-east-2": {
+                  "AMIID": "ami-0a9e12068cb98a01d"
+              },
+              "us-west-1": {
+                  "AMIID": "ami-0fa6c8d131a220017"
+              },
+              "us-west-2": {
+                  "AMIID": "ami-078c97cf1cefd1b38"
+              },
+              "eu-west-1": {
+                  "AMIID": "ami-0c9ef930279337028"
+              },
+              "eu-central-1": {
+                  "AMIID": "ami-065c1e34da68f2b02"
+              },
+              "ap-northeast-1": {
+                  "AMIID": "ami-02265963d1614d04d"
+              },
+              "ap-southeast-1": {
+                  "AMIID": "ami-0b68661b29b9e058c"
+              },
+              "ap-southeast-2": {
+                  "AMIID": "ami-00e4b147599c13588"
+              },
+              "eu-west-2":{
+                  "AMIID": "ami-05db1ea966500fa94"
+              }
+          }
+      },
+
+    "Resources": {
+
+        "MyIAMGroup": {
+            "Type": "AWS::IAM::Group",
+            "Properties": {
+                "GroupName": {
+                    "Ref": "IAMGroupname"
+                },
+                "Policies": [
+                {
+                  "PolicyName": "AdministratorAccess",
+                  "PolicyDocument": {
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": "*",
+                        "Resource": "*"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+        },
+
+        "MyIAMUser": {
+            "Type": "AWS::IAM::User",
+            "Properties": {
+                "UserName": {
+
+                    "Ref": "IAMUsername"
+  
+                },
+              "LoginProfile": {
+                "Password": {
+                    "Ref": "IAMUserPassword"
+                }
+              },
+              "Groups": [
+                {
+                    "Ref": "MyIAMGroup"
+                }
+              ]
+            },
+            "DependsOn": "MyIAMGroup"
+        },
+
+        
+
+        "IMRole": {
+
+            "Type": "AWS::IAM::Role",
+
+            "Properties": {
+
+                "AssumeRolePolicyDocument": {
+
+                    "Version": "2012-10-17",
+
+                    "Statement": [
+
+                        {
+
+                            "Effect": "Allow",
+
+                            "Principal": {
+
+                                "Service": [
+
+                                    "ec2.amazonaws.com"
+
+                                ]
+
+                            },
+
+                            "Action": [
+
+                                "sts:AssumeRole"
+
+                            ]
+
+                        }
+
+                    ]
+
+                },
+
+                "RoleName": {
+                    "Ref": "IAMRoleName"
+                },
+
+                "Path": "/",
+
+                "Policies": [
+
+                    {
+
+                        "PolicyName": "AmazonEC2ContainerServiceforEC2Role",
+
+                        "PolicyDocument": {
+
+                            "Version": "2012-10-17",
+
+                            "Statement": [
+
+                                {
+
+                                    "Effect": "Allow",
+
+                                    "Action": [
+                                        "ec2:DescribeTags",
+                                        "ecs:CreateCluster",
+                                        "ecs:DeregisterContainerInstance",
+                                        "ecs:DiscoverPollEndpoint",
+                                        "ecs:Poll",
+                                        "ecs:RegisterContainerInstance",
+                                        "ecs:StartTelemetrySession",
+                                        "ecs:UpdateContainerInstancesState",
+                                        "ecs:Submit*",
+                                        "ecr:GetAuthorizationToken",
+                                        "ecr:BatchCheckLayerAvailability",
+                                        "ecr:GetDownloadUrlForLayer",
+                                        "ecr:BatchGetImage",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+
+                                    "Resource": "*"
+
+                                }
+
+                            ]
+
+                        }
+
+                    }
+
+                ]
+
+            }
+
+        },
+
+        "SecurityGroup": {
+
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable SSH access via port 22",
+                "GroupName": "validator-sg",
+                
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "CidrIp": "0.0.0.0/0",
+                        "FromPort": 22,
+                        "ToPort": 22
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "CidrIp": "127.0.0.1/32",
+                        "FromPort": 6001,
+                        "ToPort": 6001
+                    }
+                ]
+                
+            }
+
+        },
+
+        "taskdefinition": {
+            "Type": "AWS::ECS::TaskDefinition",
+            "Properties": {
+              "RequiresCompatibilities": [
+                "EC2"
+              ],
+              "ContainerDefinitions": [
+                {
+                  "Name": "gateway_container",
+                  "MountPoints": [],
+                  "Image": "647246906413.dkr.ecr.us-east-2.amazonaws.com/validator_gateway:70",
+                  "Cpu": 0,
+                  "EntryPoint": [],
+                  "Memory": 512,
+                  
+                  "PortMappings": [
+                    {
+                      "ContainerPort": 6001,
+                      "HostPort": 0
+                    }
+                  ],
+                  "Essential": true,
+                  "Command": [
+                    "--beacon_url=3.238.111.188",
+                    "--connect-launchnodes=false"
+                  ],
+                  "Environment": [],
+                  "MemoryReservation": 300
+                }
+                
+              ],
+              "Family": "val-gateway-stack",
+              "Volumes": []
+            }
+        },
+
+        "ECSCluster": {
+
+            "Type": "AWS::ECS::Cluster",
+
+            "Properties": {
+
+                "ClusterName": {
+
+                    "Ref": "ClusterName"
+
+                }
+
+            }
+
+        },
+
+        "ContainerInstance": {
+
+            "Type": "AWS::EC2::Instance",
+
+            "Properties": {
+
+                "IamInstanceProfile": {
+
+                    "Ref": "ECSIamInstanceProfile"
+
+                },
+
+                "ImageId":{
+                    "Fn::FindInMap":[
+                      "AWSRegionToAMI",
+                      {
+                        "Ref":"AWS::Region"
+                      },
+                      "AMIID"
+                    ]
+                },
+
+                "InstanceType": {
+
+                    "Ref": "InstanceType"
+
+                },
+
+                "SecurityGroupIds": [
+
+                    {
+
+                        "Ref": "SecurityGroup"
+
+                    }
+
+                ],
+
+                "KeyName": {
+
+                    "Ref": "KeyName"
+
+                },
+
+                
+
+                "UserData": {
+
+                    "Fn::Base64": {
+
+                        "Fn::Join": [
+
+                            "",
+
+                            [
+
+                                "#!/bin/bash -xe\n",
+
+                                "echo ECS_CLUSTER=",
+
+                                {
+
+                                    "Ref": "ClusterName"
+
+                                },
+
+                                " >> /etc/ecs/ecs.config\n"
+
+                            ]
+
+                        ]
+
+                    }
+
+                }
+
+            }
+
+        },
+
+        
+        "ECSIamInstanceProfile": {
+
+            "Type": "AWS::IAM::InstanceProfile",
+
+            "Properties": {
+
+                "Path": "/",
+
+                "Roles": [
+
+                    {
+
+                        "Ref": "IMRole"
+
+                    }
+
+                ]
+
+            }
+
+        },
+
+        
+
+        "ECSService": {
+            "Type" : "AWS::ECS::Service",
+            "Properties" : {
+                "Cluster": {
+                    "Ref": "ECSCluster"
+                },
+                "DesiredCount": 1,
+                "LaunchType": "EC2",
+                
+                "ServiceName":{
+                    "Ref": "ServiceName"
+                },
+                
+                "TaskDefinition": {
+                    "Ref": "taskdefinition"
+                }
+                
+            }
+        }
+
+        
+
+    },
+
+    "Outputs": {
+
+        "ECSInstance": {
+
+            "Description": "Location for Amazon ECS Instance",
+
+            "Value": {
+
+                "Fn::Join": [
+
+                    "",
+
+                    [
+
+                        "ssh ec2-user@",
+
+                        {
+
+                            "Fn::GetAtt": [
+
+                                "ContainerInstance",
+
+                                "PublicDnsName"
+
+                            ]
+
+                        }
+
+                    ]
+
+                ]
+
+            }
+
+        }
+
+    }
+
+}

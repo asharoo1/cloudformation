@@ -1,0 +1,146 @@
+{
+
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "Amazon ECS Phase 1 Template",
+
+    "Parameters": {
+
+        "ClusterName": {
+            "Type": "String",
+            "Default": "Validator-Cluster"
+            
+        },
+
+        "ServiceName": {
+            "Type": "String",
+            "Default": "Validator-Service"
+            
+        }
+    },
+
+    "Resources": {
+
+        
+        "taskdefinition": {
+            "Type": "AWS::ECS::TaskDefinition",
+            "Properties": {
+              "RequiresCompatibilities": [
+                "EC2"
+              ],
+              "ContainerDefinitions": [
+                {
+                  "Name": "validator_container",
+                  "MountPoints": [
+                    {
+                        
+                        "ContainerPath": "/wallet",
+                        "SourceVolume": "datavol"
+                    },
+                    {
+                        
+                        "ContainerPath": "/validatorDB",
+                        "SourceVolume": "Validatordir"
+                    },
+                    {
+                        
+                        "ContainerPath": "/walletpth",
+                        "SourceVolume": "walletpass"
+                    }
+                  ],
+                  "Image": "647246906413.dkr.ecr.us-east-2.amazonaws.com/validator:v1.3.9",
+                  "Cpu": 0,
+                  
+                  
+                  "LogConfiguration" :{
+                    "LogDriver" : "awslogs",
+                    "Options" :{
+                        "awslogs-group": "/ecs/aws_validator_task_testnet",
+                        "awslogs-region": "eu-west-2",
+                        "awslogs-stream-prefix": "ecs"
+                    }
+                  },
+                  
+                  "PortMappings": [],
+                  "Essential": true,
+                  "command": [
+                        "--datadir=/validatorDB",
+                        "--beacon-rpc-provider=3.238.111.188:4000",
+                        "--wallet-dir=/wallet",
+                        "--wallet-password-file=/walletpth/pass.txt",
+                        "--accept-terms-of-use=true",
+                        "--pyrmont",
+                        "--enable-db-backup-webhook",
+                        "--attest-timely"
+                    ],
+                  "Environment": [
+                    {
+                        "Name": "ECS_DATADIR",
+                        "Value": "/wallet"
+                    },
+                    {
+                        "Name": "ECS_HOST_DATA_DIR",
+                        "Value": "/home/ec2-user/Eth2Validators/prysm-wallet-v2"
+                    }
+                  ],
+                  "MemoryReservation": 300,
+                  
+                  "WorkingDirectory": "/home/ec2-user/Eth2Validators/prysm-wallet-v2/"
+                }
+                
+              ],
+              "Family": "CF_aws_validator_task_testnet",
+              "NetworkMode": "host",
+              "Volumes": [
+                {
+                    
+                    "Name": "datavol",
+                    "Host": {
+                        "SourcePath": "/home/ec2-user/Eth2Validators/prysm-wallet-v2"
+                    }
+                },
+                {
+                    
+                    "Name": "Validatordir",
+                    "Host": {
+                        "SourcePath": "/home/ec2-user/Eth2"
+                    }
+                },
+                {
+                    
+                    "Name": "walletpass",
+                    "Host": {
+                        "SourcePath": "/home/ec2-user/password"
+                    }
+                }
+              ]
+            }
+        },
+
+
+        "ECSService": {
+            "Type" : "AWS::ECS::Service",
+            "Properties" : {
+                "Cluster": {
+                    "Ref": "ClusterName"
+                },
+                "DesiredCount": 1,
+                "LaunchType": "EC2",
+                
+                "ServiceName":{
+                    "Ref": "ServiceName"
+                },
+                
+                "TaskDefinition": {
+                    "Ref": "taskdefinition"
+                }
+                
+            }
+        }
+
+
+    }
+
+    
+
+}

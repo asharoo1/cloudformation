@@ -1,0 +1,113 @@
+{
+
+    "AWSTemplateFormatVersion": "2010-09-09",
+
+    "Description": "Amazon ECS Phase 1 Template",
+
+    "Parameters": {
+
+        "ClusterName": {
+            "Type": "String",
+            "Default": "Validator-Cluster"
+            
+        },
+
+        "ValidatorGatewayServiceName": {
+            "Type": "String",
+            "Default": "Validator-Gateway-Service"
+            
+        },
+        
+        "TaskRoleARN": {
+            "Type": "String"
+        }
+    },
+
+    
+
+    "Resources": {
+
+        "gatewaytaskdefinition": {
+            "Type": "AWS::ECS::TaskDefinition",
+            "Properties": {
+              "RequiresCompatibilities": [
+                "EC2"
+              ],
+              "Family": "validator-gateway-service",
+              
+              "ContainerDefinitions": [
+                {
+                  "Name": "gateway_container",
+                  "MountPoints": [],
+                  "Image": "647246906413.dkr.ecr.us-east-2.amazonaws.com/validator_gateway:70",
+                  "Cpu": 0,
+                  "EntryPoint": [],
+                  
+                  "PortMappings": [
+                    {
+                      "ContainerPort": 6001,
+                      "HostPort": 6001
+                    }
+                  ],
+                  "Essential": true,
+                  "Command": [
+                    "--beacon_url=3.238.111.188",
+                    "--connect-launchnodes=false"
+                  ],
+                  "Environment": [],
+                  "LogConfiguration" :{
+                    "LogDriver" : "awslogs",
+                    "Options" :{
+                        "awslogs-group": { "Ref": "ValidatorGatewayLogGroup" },
+                        "awslogs-region": { "Ref": "AWS::Region" },
+                        "awslogs-stream-prefix": "ecs"
+                    }
+                  },
+                  "MemoryReservation": 300
+                  
+                }
+                
+              ],
+              "TaskRoleArn" :{
+                  "Ref": "TaskRoleARN"
+              },
+              "NetworkMode": "host",
+              
+              "Volumes": []
+            }
+        },
+        "ValidatorGatewayLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": "validator-gateway-service"
+            }
+        },
+
+        "GatewayECSService": {
+            "Type" : "AWS::ECS::Service",
+            "Properties" : {
+                "Cluster": {
+                    "Ref": "ClusterName"
+                },
+                "DesiredCount": 1,
+                "LaunchType": "EC2",
+                "DeploymentConfiguration" :{
+                    "MinimumHealthyPercent" : 0,
+                    "MaximumPercent" : 100
+                },
+                "ServiceName":{
+                    "Ref": "ValidatorGatewayServiceName"
+                },
+                
+                "TaskDefinition": {
+                    "Ref": "gatewaytaskdefinition"
+                }
+                
+            }
+        }
+
+    }
+
+    
+
+}

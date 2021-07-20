@@ -19,11 +19,6 @@
 
         },
 
-        "ServiceName": {
-            "Type": "String",
-            "Default": "Validator-Service"
-            
-        },
         
         "IAMRoleName": {
 
@@ -69,7 +64,7 @@
 
             "Type": "AWS::EC2::KeyPair::KeyName",
 
-            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+            "ConstraintDescription": "Must be the name of an existing EC2 KeyPair."
 
         },
 
@@ -244,8 +239,10 @@
                             "Principal": {
 
                                 "Service": [
-
-                                    "ec2.amazonaws.com"
+                                    
+                                    "ec2.amazonaws.com",
+                                    "ecs-tasks.amazonaws.com"
+                                    
 
                                 ]
 
@@ -263,57 +260,18 @@
 
                 },
 
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+                    
+                ],
+
                 "RoleName": {
                     "Ref": "IAMRoleName"
                 },
 
-                "Path": "/",
+                "Path": "/"
 
-                "Policies": [
-
-                    {
-
-                        "PolicyName": "AmazonEC2ContainerServiceforEC2Role",
-
-                        "PolicyDocument": {
-
-                            "Version": "2012-10-17",
-
-                            "Statement": [
-
-                                {
-
-                                    "Effect": "Allow",
-
-                                    "Action": [
-                                        "ec2:DescribeTags",
-                                        "ecs:CreateCluster",
-                                        "ecs:DeregisterContainerInstance",
-                                        "ecs:DiscoverPollEndpoint",
-                                        "ecs:Poll",
-                                        "ecs:RegisterContainerInstance",
-                                        "ecs:StartTelemetrySession",
-                                        "ecs:UpdateContainerInstancesState",
-                                        "ecs:Submit*",
-                                        "ecr:GetAuthorizationToken",
-                                        "ecr:BatchCheckLayerAvailability",
-                                        "ecr:GetDownloadUrlForLayer",
-                                        "ecr:BatchGetImage",
-                                        "logs:CreateLogStream",
-                                        "logs:PutLogEvents"
-                                    ],
-
-                                    "Resource": "*"
-
-                                }
-
-                            ]
-
-                        }
-
-                    }
-
-                ]
+                
 
             }
 
@@ -345,41 +303,7 @@
 
         },
 
-        "taskdefinition": {
-            "Type": "AWS::ECS::TaskDefinition",
-            "Properties": {
-              "RequiresCompatibilities": [
-                "EC2"
-              ],
-              "ContainerDefinitions": [
-                {
-                  "Name": "gateway_container",
-                  "MountPoints": [],
-                  "Image": "647246906413.dkr.ecr.us-east-2.amazonaws.com/validator_gateway:70",
-                  "Cpu": 0,
-                  "EntryPoint": [],
-                  "Memory": 512,
-                  
-                  "PortMappings": [
-                    {
-                      "ContainerPort": 6001,
-                      "HostPort": 0
-                    }
-                  ],
-                  "Essential": true,
-                  "Command": [
-                    "--beacon_url=3.238.111.188",
-                    "--connect-launchnodes=false"
-                  ],
-                  "Environment": [],
-                  "MemoryReservation": 300
-                }
-                
-              ],
-              "Family": "val-gateway-stack",
-              "Volumes": []
-            }
-        },
+        
 
         "ECSCluster": {
 
@@ -498,31 +422,8 @@
 
             }
 
-        },
-
-        
-
-        "ECSService": {
-            "Type" : "AWS::ECS::Service",
-            "Properties" : {
-                "Cluster": {
-                    "Ref": "ECSCluster"
-                },
-                "DesiredCount": 1,
-                "LaunchType": "EC2",
-                
-                "ServiceName":{
-                    "Ref": "ServiceName"
-                },
-                
-                "TaskDefinition": {
-                    "Ref": "taskdefinition"
-                }
-                
-            }
         }
 
-        
 
     },
 
